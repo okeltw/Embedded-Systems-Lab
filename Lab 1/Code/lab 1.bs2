@@ -1,0 +1,40 @@
+' {$STAMP BS2}  
+
+HIGH 0
+HIGH 5
+
+loop:
+  IF IN6 THEN pattern
+GOTO loop
+
+pattern:
+   PAUSE 5000
+   LOW 0
+   HIGH 1
+
+   PAUSE 5000
+   LOW 1
+   HIGH 2
+
+   PAUSE 5000
+   LOW 5
+   HIGH 3
+
+   PAUSE 10000
+   LOW 3
+   HIGH 4
+
+   PAUSE 5000
+   LOW 4
+   HIGH 5
+
+   PAUSE 5000
+   LOW 2
+   HIGH 0
+
+
+   GOTO loop
+
+
+END
+

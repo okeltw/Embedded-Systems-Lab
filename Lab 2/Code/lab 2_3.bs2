@@ -1,0 +1,51 @@
+' {$STAMP BS2}
+counter VAR Word
+pulsewidth VAR Word
+time VAR Word
+duration VAR Word
+interval VAR Word
+flag VAR Bit
+
+Setup:
+  flag = 0
+  duration = 275
+  PULSOUT 14,duration
+  PAUSE 1000
+
+GetSpeed
+  HIGH 7
+  PAUSE 100
+  RCTIME 7,1,time
+  interval = time*/38 + 20
+  IF flag = 0 THEN MoveDown
+  IF flag = 1 THEN MoveUp
+
+MoveUp:
+  FOR duration = 334 TO 1140 STEP interval
+      PULSOUT 14, duration
+      PAUSE 75
+  NEXT
+
+  flag  = 0
+
+  GOTO GetSpeed
+
+MoveDown:
+  FOR duration = 1140 TO 334 STEP interval
+      PULSOUT 14, duration
+      PAUSE 75
+  NEXT
+
+  flag = 1
+
+  GOTO GetSpeed
+
+
+
+
+
+
+
+
+
+

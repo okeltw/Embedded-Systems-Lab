@@ -1,0 +1,36 @@
+' {$STAMP BS2}
+' {$PBASIC 2.5}
+level VAR Word            'variable to hold light level information
+loop_counter VAR Word     'counter for loops
+levels_addr VAR Word      'eeprom location for next level
+levels_addr = 0
+
+Collect:
+  'Collect data using RCTIME and write to EEPROM
+  HIGH 0
+  PAUSE 100
+  RCTIME 0, 1, level
+  DEBUG "Collection ", DEC2 levels_addr/4, ":", DEC2 levels_addr//4 * 15, " " , DEC5 level, CR
+  WRITE levels_addr * 2, Word level
+  levels_addr = levels_addr + 1
+
+  'For Testing:
+  'WAIT FOR 100ms
+  'PAUSE 100
+
+  'Wait FOR 15 minutes
+  SLEEP 900
+
+  'Determine if more data is needed before sending.
+  IF (levels_addr < 96) THEN Collect
+
+  'Send data
+  DEBUG "Sending", CR
+  'Loop through all level data in EEPROM
+  FOR loop_counter = 0 TO 95
+    READ loop_counter * 2, Word level
+    DEBUG DEC2 loop_counter/4, ":", DEC2 loop_counter//4 * 15, " " , DEC5 level, CR
+  NEXT
+  'Reset address back to 0
+  levels_addr = 0
+  GOTO Collect

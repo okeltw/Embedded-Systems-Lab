@@ -1,0 +1,75 @@
+' {$STAMP BS2}
+timer VAR Word
+Rnd VAR Word
+Fail VAR Word
+
+
+Fail = 10000
+
+Red:
+  LOW 8
+  HIGH 7
+
+  GOTO set
+END
+
+set:
+  RANDOM Rnd
+  Rnd = Rnd // 9999 + 1
+
+  PAUSE Rnd
+
+  GOTO Green
+
+END
+
+Green:
+   LOW 7
+   HIGH 8
+
+   GOTO compete
+END
+
+
+
+compete:
+timer = 0
+DEBUG "GO!", CR
+Do:
+    IF IN15 THEN AWin
+
+    IF IN0 THEN BWin
+
+    timer = timer + 1
+
+    IF timer > Fail THEN Lose
+GOTO Do
+END
+
+AWin:
+  HIGH 14
+  DEBUG  "Player A Wins!", CR
+  DEBUG  "Reaction Time: "
+  DEBUG DEC timer*2
+  DEBUG "ms", CR
+  PAUSE 2000
+  LOW 14
+  GOTO Red
+END
+
+BWin:
+  HIGH 1
+  DEBUG  "Player B Wins!", CR
+  DEBUG  "Reaction Time: "
+  DEBUG DEC timer*2
+  DEBUG "ms", CR
+  PAUSE 2000
+  LOW 1
+  GOTO Red
+END
+
+Lose:
+  DEBUG "I Win!", CR
+  DEBUG "Reaction time: 20,0000 ms", CR
+  GOTO Red
+END

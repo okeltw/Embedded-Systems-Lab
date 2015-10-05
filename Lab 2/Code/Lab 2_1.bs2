@@ -1,0 +1,16 @@
+' {$STAMP BS2}
+time VAR Word
+
+Main:
+  DEBUG "Charging Pin 7",CR
+
+  HIGH 7
+  PAUSE 1000
+
+  DEBUG "Discharging Pin 7",CR
+
+  RCTIME 7, 1, time
+
+  DEBUG "Pin 7 is now Low", CR, "Time = ", DEC5 time, " us",CR
+
+END

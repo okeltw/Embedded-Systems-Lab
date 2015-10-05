@@ -1,0 +1,185 @@
+' {$STAMP BS2}
+' {$PBASIC 2.5}
+
+'Constants
+valMax CON 1000 'Maximum Photodetector. Set this once calibrated
+valMin CON 100  'Minimum Photodetector. Set this once calibrated
+
+shiftAddress CON 0
+jamAddress CON 1
+
+
+'Pins - set these to actual values once circuit is constructed
+photoPin PIN 0 'Photodetector pin
+pushButton PIN 15 'Pushbutton pin
+ledPin PIN 14   'LED Pin
+
+
+'Variables
+
+timeLeft VAR Word ' seconds, how long is left in the shift.  Used if accidental reset was used.
+boxTime VAR Word 'seconds, how long the detector sees a box
+waitTime VAR Word
+totalTime VAR Word
+boxOn VAR Bit 'boolean, box is on the conveyor
+size VAR Word  'inches, size of the current box
+index VAR Nib 'index for countBoxes
+shift VAR Word 'Time for the shift.  Actual time is about shift/10 seconds, based on computation delay
+jamTimeAddress VAR Byte
+jams VAR Byte 'Number of Jams
+jamTime VAR Word
+countAddress VAR Byte ' Address of the count data
+countBoxes VAR Byte(4) 'Count of the box types
+                       '0 => 10 inches
+                       '1 => 20 inches
+                       '2 => 30 inches
+                       '3 => 40 inches
+                       'OR size = index+1 * 10
+total VAR Byte
+
+Initialization:
+  'set the variables, even if 0 for redundancy
+  boxTime = 0
+  waitTime = 0
+  size = 0
+  index = 0
+  boxOn = 0
+  totalTime = 0
+  shift = 100
+
+  countAddress = 2
+  jamTimeAddress = 6
+
+  DEBUG "!AMAX 100", CR,
+        "!SHFT OFF",CR,
+        "!RSET", CR
+
+  'Show the current values in the EEPROM
+  DEBUG "Counts to date", CR,
+        "==============", CR
+
+
+  FOR index = 0 TO 3
+      READ countAddress+index, countBoxes(index)
+      DEBUG DEC2 (index+1 *10), " Inches: ", DEC5 countBoxes(index), CR
+  NEXT
+
+  READ jamAddress, jams
+  DEBUG CR, "Jams to date: ", DEC3 jams, CR,
+            "=================",CR
+  FOR index = 0 TO jams
+      READ 6 + index * 2, jamTime      'jamTimeAddress starts at 6.  Loop through every jam, and add two to it (for word sizing).  Store in jam time and display to user.
+      DEBUG "Jam ", index+1, " duration = ", DEC5 jamTime,CR
+  NEXT
+
+  READ shiftAddress, timeLeft
+
+  IF timeLeft THEN
+    shift = timeLeft
+    DEBUG "Shift was not finished.  Time Left = ", DEC5 shift/10, " seconds."
+  ELSE
+    DEBUG "Shift time = ", DEC5 (shift/10)," seconds",CR,"[If you wish to alter shift time, you will need to change the constant.]",CR,CR
+  ENDIF
+
+
+WaitForBox:
+
+  HIGH photoPin
+  PAUSE 100
+  RCTIME photoPin, 1, boxTime
+  boxTime = boxTime MAX valMax MIN valMin
+
+  IF waitTime > 100 THEN Jam
+
+  IF boxTime > (valMax-valMin) / 4 * 3 THEN
+      boxOn = 1
+  ELSEIF boxOn AND boxTime < (valMax-valMin) / 4 THEN
+      GOTO Record
+  ELSEIF totalTime >= shift THEN
+      GOTO ShiftEnd
+  ENDIF
+
+  IF boxOn THEN
+    size = size + 1
+  ENDIF
+
+  waitTime = waitTime + 1
+  totalTime = totalTime + 1
+
+  total = 0
+  FOR index = 0 TO 3
+    total = total + countBoxes(index)
+  NEXT
+
+
+  DEBUG DEC5 total, CR
+
+  GOTO WaitForBox
+
+Record:
+  IF size < 15 THEN
+    size = 1
+  ELSEIF size >=15 AND size < 25 THEN
+    size = 2
+  ELSEIF size >= 25 AND size < 35 THEN
+    size = 3
+  ELSE
+    size = 4
+  ENDIF
+
+
+  DEBUG CR, "Box Detected, size of ", DEC2 size*10, " inches.", CR
+  index = size - 1 'Since we are traveling at 10 inches/sec, a 10 inch box will
+  countBoxes(index) = countBoxes(index) + 1
+  size = 0
+  waitTime = 0
+  boxTime = 0
+  boxOn =0
+  GOTO WriteData
+
+
+'How do we detect the box if it is on the receptor during jam?
+Jam:
+  jams = jams + 1
+  waitTime = 0
+  boxOn=0
+  jamTime = 0
+  DEBUG CR, "Jam Detected!", CR
+  DO
+    HIGH ledPin
+    PAUSE 500
+    LOW ledPin
+    IF IN15 THEN
+      DEBUG "Jam Resolved.", CR,CR
+      GOTO WriteData
+    ENDIF
+    PAUSE 500
+    totalTime = totalTime + 1
+    jamTime = jamTime + 1
+  LOOP
+
+ShiftEnd:
+  DEBUG  "End Of Shift!!!", CR
+  FOR index = 0 TO 3
+      DEBUG DEC2 (index+1 *10), " Inches: ", DEC5 countBoxes(index), CR
+  NEXT
+  DEBUG CR, "Jams to date: ", DEC3 jams, CR,
+            "=================",cr
+  FOR index = 0 TO jams
+      READ 6 + index * 2, jamTime      'jamTimeAddress starts at 6.  Loop through every jam, and add two to it (for word sizing).  Store in jam time and display to user.
+      DEBUG "Jam ", index+1, " duration = ", DEC5 jamTime,cr
+  next
+END
+
+WriteData:
+  FOR index = 0 TO 3
+    WRITE countAddress+index, countBoxes(index)
+  NEXT
+  WRITE jamAddress, jams
+  IF jamTime  THEN
+     WRITE jamTimeAddress, jamTime
+     jamTimeAddress = jamTimeAddress + 2
+     jamTime = 0
+  ENDIF
+  GOTO WaitForBox
+

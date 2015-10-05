@@ -1,0 +1,131 @@
+' {$STAMP BS2}
+' {$PBASIC 2.5}
+
+Notes            DATA "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"
+
+segConfigs       DATA %11110101, 'A
+                      %11111101, 'A# == Bb
+                      %11110111, 'B - Capital      ***
+                      %01100011, 'C
+                      %01101011, 'C# == Db
+                      %11100111, 'D - Captital     ***
+                      %11101111, 'D# == Eb
+                      %01110011, 'E
+                      %01110001, 'F
+                      %01111001, 'F# == Gb
+                      %01100111, 'G; config 1      ***
+                      %01101111  'G# == Ab(octave)
+
+Frequencies      DATA Word 1760, 'A6
+                      Word 1865, 'A6#
+                      Word 1976, 'B6
+                      Word 2093, 'C7
+                      Word 2218, 'C7#
+                      Word 2349, 'D7
+                      Word 2489, 'D7#
+                      Word 2637, 'E7
+                      Word 2794, 'F7
+                      Word 2960, 'F7#
+                      Word 3136, 'G7
+                      Word 3322  'G7#
+
+default CON 80
+maxPot CON 4000
+minPot CON 100
+
+speaker PIN 13
+pot PIN 14
+redLED PIN 12
+yellowLED PIN 11
+greenLED PIN 10
+
+Note VAR Word
+freq VAR Word
+Duration VAR Word
+time VAR Word
+
+index VAR Byte
+MaxTempo VAR Byte
+MinTempo VAR Byte
+RangeTempo VAR Byte
+tempoAdjust VAR Byte
+rangePot VAR Byte
+scale VAR Byte
+
+less VAR Bit
+
+Initialize:
+  MaxTempo = default*4
+  MinTempo = default/4
+  RangeTempo = MaxTempo-MinTempo
+
+  rangePot = maxPot-minPot
+
+  scale = (((RangeTempo*100)/rangePot)*256)/100
+
+Test:
+  OUTL = %00000000
+  DIRL = %11111111
+
+  Duration = 1000
+
+  DEBUG "index   OUTL       Note", CR,
+        "------  ---------  -----", CR
+  FOR index = 0 TO 12
+      READ Notes + index, Note
+      READ segConfigs + index, OUTL
+      READ frequencies + index, freq
+
+      DEBUG "  ", DEC2 index, "   ", BIN8 OUTL, "   ", Note, CR
+
+      FREQOUT speaker, Duration, freq
+
+  NEXT
+
+Switch:
+  'Some logic to switch between songs, reset to song one, etc
+  GOSUB Play
+
+Play:
+  index = 0
+  DO
+      READ Notes + index, Note
+      READ segConfigs + index, OUTL
+      READ frequencies + index, freq 'Make this the song notes, have the result control 7-seg
+
+      IF IN15 THEN RETURN
+
+      IF freq >= 1046 AND freq < 2093 THEN
+         DEBUG Note, 6, CR
+         HIGH yellowLED
+      ELSEIF freq >= 2093 AND freq < 4186 THEN
+         DEBUG Note, 7,CR
+         HIGH redLED
+      ELSE
+         DEBUG "Unkown note and octave"
+         HIGH greenLED
+      ENDIF
+
+      HIGH 14
+      PAUSE 100
+      RCTIME 14, 1, time
+
+      'TODO: Scale RCtime into tempoAdjustment
+      'Current idea:
+      'Default is median.  If pot < certain value, set less flag and calculate the adjustment.
+
+      IF time < maxPot/2 THEN
+        Duration = default/(time*/scale)
+      ELSE
+        Duration = default*(time*/scale)
+      ENDIF
+
+      DEBUG "Duration: ", Duration, CR
+
+      IF IN15 THEN RETURN
+
+      FREQOUT speaker, Duration, freq
+
+      IF IN15 THEN RETURN
+
+  LOOP

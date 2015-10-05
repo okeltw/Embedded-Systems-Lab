@@ -1,0 +1,31 @@
+' {$STAMP BS2}
+counter VAR Word
+pulsewidth VAR Word
+time VAR Word
+
+Setup:
+  pulsewidth = 750
+  DEBUG "Setting Rudder to 90 degrees",CR
+  PULSOUT 14, pulsewidth
+  PAUSE 2000
+  DEBUG "Begin Simulation",CR,CR
+
+Move:
+  PULSOUT 14, pulsewidth
+  GOTO Steer
+
+Steer:
+  HIGH 7
+  PAUSE 100
+  RCTIME 7,1,time
+  DEBUG DEC5 time
+
+  pulsewidth = time*/236
+  pulsewidth = pulsewidth + 500   'Angle range 500-1000, Pot range 1-543, Conv Ratio = 9/10
+
+
+  GOTO Move
+
+END
+
+
